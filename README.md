@@ -1,80 +1,66 @@
-# AI Skill Analyzer - Backend Data Collection Pipeline
+# AI Skill Analyzer
 
-This repository contains the backend data collection and cleaning modules for the **AI Skill Analyzer** project. These scripts fetch, extract, and clean data from various sources (GitHub, Resumes, Web Links, and Demo Videos) to output a unified JSON structure for downstream AI evaluation and UI rendering.
+This repository contains the full-stack system for the **AI Hands-On Persona Analyzer**. It is designed to automatically collect, process, and analyze a user's technical footprint (e.g., GitHub history, resume, URLs, demo videos) to generate a "Hands-On Persona Profile."
 
-## Setup & Installation
+## System Architecture
+
+The application is split into two main components:
+1. **Backend API (FastAPI + Python)**
+   - Extracts data from GitHub, parses Resumes (PDF), and transcribes Demo Videos using `yt-dlp` and `whisper`.
+   - Runs a scoring algorithm (`scorer.py`) over the extracted signals.
+   - Serves the aggregated JSON data securely via REST endpoints (`api.py`).
+2. **Frontend UI (Vanilla HTML/CSS/JS + Chart.js)**
+   - A single-page, glassmorphic design that allows students to input their information.
+   - Fetches profile data from the REST API.
+   - Renders animated score breakdowns, GitHub language doughnuts, and technical insights.
+
+## Scoring Methodology
+
+The scoring framework evaluates practical engineering ability out of 100 points, broken into 4 categories:
+1. **Project Evidence Score (30 pts)**: Weighted by the number of original (non-forked) repositories, total combined stars, and the presence of validated, live deployment URLs.
+2. **GitHub Activity Score (30 pts)**: Weighed by followers, the number of distinct programming languages used across public repositories, and the sheer volume of public repositories.
+3. **Engineering Practice Score (20 pts)**: Based on the density of technical skills/languages identified in the attached resume and demo videos.
+4. **Collaboration Score (20 pts)**: Evaluates collaborative efforts (proxied through the ratio of forked repositories/open source involvement vs total repositories).
+
+**Personas Identified**:
+- **Builder**: Score >= 80
+- **Explorer**: Score >= 60 and High Project Evidence
+- **Academic**: Score >= 40 and High Activity/Research but low links
+- **Beginner**: Score < 40 or empty profiles
+
+## Setup & Deployment
 
 **Prerequisites:**
 - Python 3.10+
-- [FFmpeg](https://ffmpeg.org/download.html) (strictly required for `yt-dlp` and `whisper` to transcribe audio)
+- [FFmpeg](https://ffmpeg.org/download.html) (required for transcribing audio)
+- GitHub Personal Access Token (`.env` file) to prevent strict API rate limiting.
 
-**1. Create virtual environment and install dependencies:**
+### 1. Backend Server
 ```bash
 python -m venv venv
-# On Windows
-.\venv\Scripts\activate
-# On Mac/Linux
-source venv/bin/activate
-
+source venv/bin/activate  # On Windows: .\venv\Scripts\activate
 pip install -r requirements.txt
+pip install fastapi uvicorn pydantic python-multipart httpx
 ```
 
-**2. Configure Environment Variables:**
-Rename `.env.template` to `.env` and add your GitHub Personal Access Token.
+*Create a `.env` file from the `.env.template` and add your `GITHUB_TOKEN`.*
+
+Run the REST API:
 ```bash
-GITHUB_TOKEN=your_token_here
+python -m uvicorn api:app --host 0.0.0.0 --port 8000
 ```
-*(Without a token, GitHub strictly limits API requests to 60/hr. With a token, you get 5000/hr).*
 
-## Usage
-
-### 1. Unified Pipeline (`main.py`)
-
-The easiest way to use the backend is the `main.py` orchestrator script. It runs all modules concurrently based on the arguments you provide.
-
+### 2. Frontend Interface
+Since the frontend uses zero-build, plain HTML/CSS/JS with CDN links, you just need to serve the root directory containing `index.html`. 
 ```bash
-python main.py --github "torvalds" --resume "path/to/resume.pdf" --videos "https://youtu.be/..." --urls "https://myapp.vercel.app" --out "student_data.json"
+# In a new terminal, serve the frontend:
+python -m http.server 8080
 ```
+Navigate to `http://localhost:8080` in your browser.
 
-**Arguments:**
-- `--github`: GitHub username to extract stats and repos.
-- `--resume`: Path to the student's resume PDF.
-- `--videos`: One or more video URLs (spaced) to transcribe.
-- `--urls`: One or more web URLs (spaced) to validate deployment status.
-- `--out`: Output JSON file name (default is `backend_output.json`).
+## Sample Profiles to Test
 
-### 2. Individual Modules
-
-You can also import and construct the modules independently in your own scripts or FastAPI endpoints:
-
-#### GitHub Extractor
-Fetches profile info, repositories, and aggregates language usage.
-```python
-from github_extractor import GitHubExtractor
-extractor = GitHubExtractor()
-data = extractor.get_user_data("username")
-```
-
-#### Resume Extractor
-Extracts raw text, identifies programming skills based on keywords, and extracts URLs for validation.
-```python
-from resume_extractor import ResumeExtractor
-extractor = ResumeExtractor()
-data = extractor.process_resume("resume.pdf")
-```
-
-#### Link Validator
-Checks the HTTP status of URLs and uses heuristics to guess if the link is a hosted web application.
-```python
-from link_validator import LinkValidator
-validator = LinkValidator()
-status_map = validator.validate_links(["https://app.vercel.app", "https://github.com/repo"])
-```
-
-#### Video Transcriber
-Downloads audio from YouTube or demo links via `yt-dlp` and runs OpenAI's `whisper` model locally to transcribe the demo.
-```python
-from video_transcriber import VideoTranscriber
-transcriber = VideoTranscriber(model_size="base") # Use 'tiny' for speed or 'small'/'medium' for accuracy
-transcript = transcriber.transcribe_video("https://youtu.be/demo")
-```
+To test the application, launch the UI and try entering these GitHub profiles:
+1. `torvalds` (High activity, Explorer/Builder tier)
+2. `defunkt` (GitHub co-founder)
+3. Your own GitHub username! 

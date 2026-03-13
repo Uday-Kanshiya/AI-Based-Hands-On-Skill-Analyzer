@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Hands-On Persona Analyzer</title>
+    <!-- Use Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chart.js for visualizations instead of Recharts (since we can't use npm easily) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            /* Rich Dark Theme Palette */
+            --bg-color: #0b0f19;
+            --card-bg: rgba(22, 28, 45, 0.7);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --primary: #6366f1; /* Indigo */
+            --primary-hover: #4f46e5;
+            --secondary: #ec4899; /* Pink */
+            --accent: #8b5cf6; /* Purple */
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --success: #10b981;
+            
+            --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            --glass-backdrop: blur(12px);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            /* Animated gradient background */
+            background: linear-gradient(-45deg, #0b0f19, #131b2f, #1e1b4b, #0f172a);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+        }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -1px;
+        }
+
+        p.subtitle {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+        }
+
+        /* Glassmorphism Cards */
+        .glass-card {
+            background: var(--card-bg);
+            backdrop-filter: var(--glass-backdrop);
+            -webkit-backdrop-filter: var(--glass-backdrop);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: var(--glass-shadow);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .glass-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.4);
+        }
+
+        /* Forms */
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: #e2e8f0;
+        }
+
+        input[type="text"], input[type="url"], input[type="file"] {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            color: white;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.3s ease;
+        }
+
+        input[type="text"]:focus, input[type="url"]:focus {
+            border-color: var(--primary);
+        }
+
+        button {
+            width: 100%;
+            padding: 1rem;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.3s ease, transform 0.1s ease;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+        
+        button:active {
+            transform: scale(0.98);
+        }
+
+        button:disabled {
+            background: #475569;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        /* Layout */
+        .grid-layout {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 2rem;
+            align-items: start;
+        }
+
+        @media (max-width: 900px) {
+            .grid-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Loading Spinner */
+        .loader {
+            display: none;
+            text-align: center;
+            margin: 2rem 0;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(255,255,255,0.1);
+            border-left-color: var(--secondary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Results Area */
+        #results-area {
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .score-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--card-border);
+        }
+
+        .score-box {
+            text-align: center;
+        }
+
+        .score-number {
+            font-size: 4rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--success), #34d399);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            line-height: 1;
+        }
+
+        .persona-badge {
+            display: inline-block;
+            padding: 0.5rem 1.5rem;
+            background: rgba(236, 72, 153, 0.2);
+            color: var(--secondary);
+            border: 1px solid var(--secondary);
+            border-radius: 999px;
+            font-weight: 600;
+            font-size: 1.2rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 0.5rem;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .metric-card {
+            background: rgba(15, 23, 42, 0.4);
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .metric-value {
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .metric-label {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-top: 0.5rem;
+        }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+        
+        @media (max-width: 768px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+        
+        h3 {
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
+            font-weight: 500;
+            color: #f1f5f9;
+        }
+
+        .insights-list {
+            margin-top: 2rem;
+            list-style-type: none;
+        }
+        
+        .insights-list li {
+            padding: 1rem;
+            background: rgba(16, 185, 129, 0.1);
+            border-left: 4px solid var(--success);
+            margin-bottom: 0.5rem;
+            border-radius: 4px;
+        }
+
+        .error-message {
+            display: none;
+            background: rgba(239, 68, 68, 0.2);
+            color: #fca5a5;
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid #ef4444;
+            margin-bottom: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Hands-On Persona Analyzer</h1>
+            <p class="subtitle">Enter a GitHub username to discover their engineering profile</p>
+        </header>
+
+        <div class="grid-layout">
+            <!-- Left Column: Input Form -->
+            <div class="glass-card">
+                <form id="analyze-form">
+                    <div id="error-box" class="error-message"></div>
+                    
+                    <div class="form-group">
+                        <label for="github">GitHub Username *</label>
+                        <input type="text" id="github" placeholder="e.g. torvalds" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="extra_urls">Deployed Project URLs (Optional)</label>
+                        <input type="text" id="extra_urls" placeholder="https://app.com, https://demo.com">
+                        <small style="color:var(--text-muted); font-size: 0.8rem; margin-top: 0.25rem; display:block;">Comma separated list of URLs</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="video_urls">Demo Video URL (Optional)</label>
+                        <input type="url" id="video_urls" placeholder="https://youtube.com/...">
+                    </div>
+
+                    <button type="submit" id="submit-btn">Analyze Profile</button>
+                    
+                    <div class="loader" id="loader">
+                        <div class="spinner"></div>
+                        <p style="margin-top: 1rem; color: var(--text-muted);">Analyzing GitHub data, extracting signals...</p>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Right Column: Results Dashboard -->
+            <div class="glass-card" id="results-area">
+                <div class="score-header">
+                    <div>
+                        <h2 style="font-size: 1.5rem; margin-bottom: 0.5rem;" id="res-username">@username</h2>
+                        <div class="persona-badge" id="res-persona">Builder</div>
+                    </div>
+                    <div class="score-box">
+                        <div class="score-number" id="res-score">85</div>
+                        <div style="color: var(--text-muted); font-size: 0.9rem; font-weight: 600; margin-top: 0.25rem;">HANDS-ON SCORE</div>
+                    </div>
+                </div>
+
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-value" id="res-repos">0</div>
+                        <div class="metric-label">Original Repos</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="res-stars">0</div>
+                        <div class="metric-label">Total Stars</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="res-langs">0</div>
+                        <div class="metric-label">Languages</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="res-links">0</div>
+                        <div class="metric-label">Deployed Apps</div>
+                    </div>
+                </div>
+
+                <div class="charts-grid">
+                    <div>
+                        <h3>Score Breakdown</h3>
+                        <div class="chart-container">
+                            <canvas id="radarChart"></canvas>
+                        </div>
+                    </div>
+                    <div>
+                        <h3>Top Languages</h3>
+                        <div class="chart-container">
+                            <canvas id="doughnutChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 2rem;">
+                    <h3>Key Insights</h3>
+                    <ul class="insights-list" id="res-insights">
+                        <!-- Insights injected here -->
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = "http://localhost:8000/api/analyze";
+        let radarChartInstance = null;
+        let doughnutChartInstance = null;
+
+        document.getElementById('analyze-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const username = document.getElementById('github').value.trim();
+            const extraUrlsStr = document.getElementById('extra_urls').value.trim();
+            const videoUrl = document.getElementById('video_urls').value.trim();
+            
+            // Prepare payload
+            const payload = {
+                github_username: username
+            };
+            
+            if (extraUrlsStr) {
+                payload.extra_urls = extraUrlsStr.split(',').map(s => s.trim()).filter(s => s);
+            }
+            if (videoUrl) {
+                payload.video_urls = [videoUrl];
+            }
+
+            // UI State updates
+            const submitBtn = document.getElementById('submit-btn');
+            const loader = document.getElementById('loader');
+            const resultsArea = document.getElementById('results-area');
+            const errorBox = document.getElementById('error-box');
+            
+            submitBtn.style.display = 'none';
+            loader.style.display = 'block';
+            resultsArea.style.display = 'none';
+            errorBox.style.display = 'none';
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.detail || 'An error occurred during analysis.');
+                }
+                
+                if (data.raw_data && data.raw_data.github_data && data.raw_data.github_data.error) {
+                    throw new Error(data.raw_data.github_data.error);
+                }
+
+                renderResults(data);
+                
+            } catch (error) {
+                errorBox.textContent = error.message;
+                errorBox.style.display = 'block';
+            } finally {
+                submitBtn.style.display = 'block';
+                loader.style.display = 'none';
+            }
+        });
+
+        function renderResults(data) {
+            const analysis = data.analysis;
+            const metrics = analysis.metrics;
+            const topLangs = data.raw_data.github_data?.top_languages || {};
+            
+            // Update Text Nodes
+            document.getElementById('res-username').textContent = `@${data.raw_data.github_data?.username || 'user'}`;
+            document.getElementById('res-persona').textContent = analysis.persona;
+            document.getElementById('res-score').textContent = analysis.hands_on_score;
+            
+            document.getElementById('res-repos').textContent = metrics.original_repos;
+            document.getElementById('res-stars').textContent = metrics.total_stars;
+            document.getElementById('res-langs').textContent = metrics.unique_languages;
+            document.getElementById('res-links').textContent = metrics.active_links;
+            
+            // Insights list
+            const insightsList = document.getElementById('res-insights');
+            insightsList.innerHTML = '';
+            analysis.insights.forEach(insight => {
+                const li = document.createElement('li');
+                li.textContent = insight;
+                insightsList.appendChild(li);
+            });
+
+            // Handle Radar Chart
+            updateRadarChart(analysis.breakdown);
+            
+            // Handle Doughnut Chart
+            updateDoughnutChart(topLangs);
+
+            // Show results section
+            document.getElementById('results-area').style.display = 'block';
+        }
+
+        function updateRadarChart(breakdown) {
+            const ctx = document.getElementById('radarChart').getContext('2d');
+            
+            if (radarChartInstance) radarChartInstance.destroy();
+            
+            // Normalize out of 100 for visual uniformity
+            const maxScores = {
+                project_evidence: 30,
+                github_activity: 30,
+                engineering_practice: 20,
+                collaboration: 20
+            };
+            
+            const rawData = [
+                breakdown.project_evidence,
+                breakdown.github_activity,
+                breakdown.engineering_practice,
+                breakdown.collaboration
+            ];
+            
+            // Scale to 100 for radar
+            const labels = ['Project Evidence', 'GitHub Activity', 'Engineering', 'Collaboration'];
+            const dataScaled = [
+                (breakdown.project_evidence / maxScores.project_evidence) * 100,
+                (breakdown.github_activity / maxScores.github_activity) * 100,
+                (breakdown.engineering_practice / maxScores.engineering_practice) * 100,
+                (breakdown.collaboration / maxScores.collaboration) * 100
+            ];
+
+            Chart.defaults.color = '#94a3b8';
+            Chart.defaults.font.family = "'Outfit', sans-serif";
+
+            radarChartInstance = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Score Component %',
+                        data: dataScaled,
+                        backgroundColor: 'rgba(99, 102, 241, 0.2)',
+                        borderColor: 'rgba(99, 102, 241, 1)',
+                        pointBackgroundColor: 'rgba(236, 72, 153, 1)',
+                        pointBorderColor: '#fff',
+                        borderWidth: 2,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            angleLines: { color: 'rgba(255, 255, 255, 0.1)' },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                            pointLabels: {
+                                color: '#e2e8f0',
+                                font: { size: 12 }
+                            },
+                            ticks: {
+                                display: false,
+                                min: 0,
+                                max: 100
+                            }
+                        }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        function updateDoughnutChart(langsDict) {
+            const ctx = document.getElementById('doughnutChart').getContext('2d');
+            
+            if (doughnutChartInstance) doughnutChartInstance.destroy();
+            
+            const labels = Object.keys(langsDict).slice(0, 5); // Top 5
+            const data = Object.values(langsDict).slice(0, 5);
+            
+            if (labels.length === 0) {
+                labels.push('No Data');
+                data.push(1);
+            }
+
+            doughnutChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: [
+                            '#6366f1', // Indigo
+                            '#ec4899', // Pink
+                            '#10b981', // Emerald
+                            '#f59e0b', // Amber
+                            '#8b5cf6'  // Purple
+                        ],
+                        borderWidth: 0,
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '70%',
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: { color: '#e2e8f0', usePointStyle: true, padding: 20 }
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
