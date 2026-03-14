@@ -76,7 +76,7 @@ Since the frontend uses zero-build, plain HTML/CSS/JS with CDN links, you just n
 # In a new terminal, serve the frontend:
 python -m http.server 8080
 ```
-Navigate to `http://localhost:8080` in your browser.
+Navigate to `https://ai-based-hands-on-skill-analyzer-production.up.railway.app` in your browser.
 
 ## Sample Profiles to Test
 
