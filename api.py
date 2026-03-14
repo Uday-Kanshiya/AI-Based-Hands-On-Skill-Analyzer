@@ -41,10 +41,15 @@ class AnalyzeRequest(BaseModel):
     extra_urls: Optional[List[str]] = None
 
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 @app.get("/")
 def read_root():
     return FileResponse("index.html")
+
+@app.get("/logo.png")
+def get_logo():
+    return FileResponse("logo.png")
 
 @app.post("/api/analyze")
 async def analyze_profile(request: AnalyzeRequest):
