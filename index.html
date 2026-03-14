@@ -60,30 +60,7 @@
         header {
             text-align: center;
             margin-bottom: 3rem;
-        }
-
-        .logo-container {
-            display: inline-block;
-            width: 100px;
-            height: 100px;
-            margin-bottom: 1rem;
-            border-radius: 24px;
-            padding: 8px;
-            background: rgba(99, 102, 241, 0.1);
-            border: 2px solid rgba(236, 72, 153, 0.3);
-            box-shadow: 0 0 20px rgba(99, 102, 241, 0.4), inset 0 0 10px rgba(236, 72, 153, 0.2);
-            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-
-        .logo-container:hover {
-            transform: scale(1.05) rotate(5deg);
-        }
-
-        img.logo-img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            border-radius: 16px;
+            transition: margin-bottom 0.5s ease;
         }
 
         h1 {
@@ -180,10 +157,24 @@
             grid-template-columns: 1fr 2fr;
             gap: 2rem;
             align-items: start;
+            transition: all 0.5s ease;
+        }
+
+        /* Initial Centered View */
+        .grid-layout.centered-layout {
+            grid-template-columns: minmax(auto, 600px);
+            justify-content: center;
+        }
+
+        .grid-layout.centered-layout #results-area {
+            display: none !important;
         }
 
         @media (max-width: 900px) {
             .grid-layout {
+                grid-template-columns: 1fr;
+            }
+            .grid-layout.centered-layout {
                 grid-template-columns: 1fr;
             }
         }
@@ -337,14 +328,11 @@
 <body>
     <div class="container">
         <header>
-            <div class="logo-container">
-                <img src="/logo.png" alt="Hands-On Persona Analyzer Logo" class="logo-img">
-            </div>
             <h1>Hands-On Persona Analyzer</h1>
             <p class="subtitle">Enter a GitHub username to discover their engineering profile</p>
         </header>
 
-        <div class="grid-layout">
+        <div class="grid-layout centered-layout" id="main-layout">
             <!-- Left Column: Input Form -->
             <div class="glass-card">
                 <form id="analyze-form">
@@ -471,11 +459,15 @@
             const loader = document.getElementById('loader');
             const resultsArea = document.getElementById('results-area');
             const errorBox = document.getElementById('error-box');
+            const mainLayout = document.getElementById('main-layout');
             
             submitBtn.style.display = 'none';
             loader.style.display = 'block';
             resultsArea.style.display = 'none';
             errorBox.style.display = 'none';
+            
+            // Re-center if submitting a new query while results are open
+            mainLayout.classList.add('centered-layout');
 
             try {
                 // If API_URL is relative, it will use the domain where index.html is hosted
@@ -536,6 +528,9 @@
             // Handle Doughnut Chart
             updateDoughnutChart(topLangs);
 
+            // Transition from Centered Layout to Dual-Pane layout
+            document.getElementById('main-layout').classList.remove('centered-layout');
+            
             // Show results section
             document.getElementById('results-area').style.display = 'block';
         }
