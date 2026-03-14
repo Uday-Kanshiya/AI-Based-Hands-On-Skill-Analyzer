@@ -2,31 +2,51 @@
 
 This repository contains the full-stack system for the **AI Hands-On Persona Analyzer**. It is designed to automatically collect, process, and analyze a user's technical footprint (e.g., GitHub history, resume, URLs, demo videos) to generate a "Hands-On Persona Profile."
 
-## System Architecture
+## Method of Approach & System Architecture
 
-The application is split into two main components:
-1. **Backend API (FastAPI + Python)**
-   - Extracts data from GitHub, parses Resumes (PDF), and transcribes Demo Videos using `yt-dlp` and `whisper`.
-   - Runs a scoring algorithm (`scorer.py`) over the extracted signals.
-   - Serves the aggregated JSON data securely via REST endpoints (`api.py`).
-2. **Frontend UI (Vanilla HTML/CSS/JS + Chart.js)**
-   - A single-page, glassmorphic design that allows students to input their information.
-   - Fetches profile data from the REST API.
-   - Renders animated score breakdowns, GitHub language doughnuts, and technical insights.
+The application is split into two main components operating seamlessly together:
+1. **Data Collection Pipeline (FastAPI + Python)**
+   - **GitHub Integration:** Uses a Personal Access Token to bypass strict API rate limits, extracting the user's public repositories, stars, followers, and language statistics using `PyGithub`.
+   - **Resume Processing:** Uploaded PDF Resumes are parsed by `pdfplumber`, utilizing Natural Language Processing (regex/keyword extraction) to mine technical skills and certifications.
+   - **Link Validation:** Custom scripts scrape and validate live deployment URLs provided by the user.
+   - **Video Analysis:** Optionally uses `yt-dlp` to download demo video audio, transcribing it via OpenAI's `whisper` model to detect spoken technical jargon and soft skills.
+2. **Analysis Engine & Frontend Interface (Vanilla HTML/CSS/JS)**
+   - Runs a heuristic scoring algorithm (`scorer.py`) over the extracted signals to formulate an objective persona.
+   - Serves an interactive, glassmorphic presentation layer containing radar charts and doughnut graphs powered by `Chart.js`.
 
-## Scoring Methodology
+## Data Collection & Extraction
 
-The scoring framework evaluates practical engineering ability out of 100 points, broken into 4 categories:
-1. **Project Evidence Score (30 pts)**: Weighted by the number of original (non-forked) repositories, total combined stars, and the presence of validated, live deployment URLs.
-2. **GitHub Activity Score (30 pts)**: Weighed by followers, the number of distinct programming languages used across public repositories, and the sheer volume of public repositories.
-3. **Engineering Practice Score (20 pts)**: Based on the density of technical skills/languages identified in the attached resume and demo videos.
-4. **Collaboration Score (20 pts)**: Evaluates collaborative efforts (proxied through the ratio of forked repositories/open source involvement vs total repositories).
+The backend pipeline extracts four primary "Signals" to perform an objective evaluation:
+- **Code & Repository Signals:** Pulls original, non-forked repositories. It identifies commit frequencies, languages utilized, and community engagement (Stars/Forks).
+- **Practical Deployment Signals:** Validates user-provided URLs to verify the existence of deployed, working applications vs. theoretical code.
+- **Documentation & Resume Signals:** Analyzes text from provided PDF resumes to verify skill density and technical communication ability.
+- **Demonstration Signals:** Listens to provided spoken-word demo videos to measure the ability to articulate technical concepts securely.
+
+## Evaluation Criteria & Scoring Methodology
+
+The scoring framework evaluates practical engineering ability out of a maximum of 100 points, strictly allocated across 4 robust categories:
+
+1. **Project Evidence Score (Maximum 30 pts):** 
+   - Weighted heavily by the number of original (non-forked) repositories.
+   - Factors in total combined stars across all original work.
+   - Rewards the presence of validated, live deployment URLs demonstrating end-to-end delivery capability.
+
+2. **GitHub Activity Score (Maximum 30 pts):**
+   - Weighed by community followers and social proof.
+   - Analyzes the breadth of the developer by counting distinct programming languages used natively in their repositories.
+
+3. **Engineering Practice Score (Maximum 20 pts):**
+   - Assesses the density of technical skills/languages explicitly identified in the attached Resume and transcribed demo videos.
+
+4. **Collaboration Score (Maximum 20 pts):**
+   - Evaluates teamwork and open-source engagement. Proxied through the ratio of forked repositories and involvement in external codebases vs. isolated solo repositories.
 
 **Personas Identified**:
-- **Builder**: Score >= 80
-- **Explorer**: Score >= 60 and High Project Evidence
-- **Academic**: Score >= 40 and High Activity/Research but low links
-- **Beginner**: Score < 40 or empty profiles
+Based on the final score calculation, candidates are assigned a Persona:
+- 🏆 **Builder**: Score >= 80 (Demonstrates high volume of original work and completed deployments).
+- 🧭 **Explorer**: Score >= 60 (High project evidence and linguistic breadth).
+- 📚 **Academic**: Score >= 40 (High activity/research focus but low practical links).
+- 🌱 **Beginner**: Score < 40 (Or largely empty digital profiles).
 
 ## Setup & Deployment
 
@@ -64,3 +84,19 @@ To test the application, launch the UI and try entering these GitHub profiles:
 1. `torvalds` (High activity, Explorer/Builder tier)
 2. `defunkt` (GitHub co-founder)
 3. Your own GitHub username! 
+
+## Resume Evaluation Case Study
+
+The system goes beyond just counting repositories. Here is an example of how a standard software engineering resume is evaluated by the pipeline:
+
+### Input Scenario
+- **Given:** A 1-page PDF Resume for a Full-Stack Developer applicant.
+- **Content:** The resume details academic history and lists skills like "Python", "React", "Docker", "AWS", and "SQL" scattered in paragraphs.
+- **Deployment Links:** Provided 1 live portfolio link (`https://my-portfolio.dev`).
+
+### System Output & Persona Classification
+1. **Data Collection:** The `pdfplumber` pipeline scans the document and identifies 5 distinct hard-skills matching our heuristic database. The `link_validator.py` confirms the portfolio link returns an HTTP 200 Status Code.
+2. **Calculations:** 
+   - The user is awarded baseline *Engineering Practice* points for the 5 localized skills.
+   - They receive bonus *Project Evidence* points for the verified live deployment.
+3. **Assessment:** Assuming an average GitHub history alongside this resume, the applicant crosses the 60+ threshold and is proudly classified as an **Explorer Persona**, meaning they provide tangible evidence of their capabilities beyond just academic text.
