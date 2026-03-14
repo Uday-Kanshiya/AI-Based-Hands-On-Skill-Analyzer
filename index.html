@@ -66,6 +66,7 @@
             margin-bottom: 0.5rem;
             background: linear-gradient(90deg, var(--primary), var(--secondary));
             -webkit-background-clip: text;
+            background-clip: text;
             -webkit-text-fill-color: transparent;
             letter-spacing: -1px;
         }
@@ -211,6 +212,7 @@
             font-weight: 700;
             background: linear-gradient(135deg, var(--success), #34d399);
             -webkit-background-clip: text;
+            background-clip: text;
             -webkit-text-fill-color: transparent;
             line-height: 1;
         }
@@ -335,6 +337,11 @@
                         <input type="url" id="video_urls" placeholder="https://youtube.com/...">
                     </div>
 
+                    <div class="form-group">
+                        <label for="resume">Resume (PDF, Optional)</label>
+                        <input type="file" id="resume" accept="application/pdf">
+                    </div>
+
                     <button type="submit" id="submit-btn">Analyze Profile</button>
                     
                     <div class="loader" id="loader">
@@ -402,7 +409,7 @@
     </div>
 
     <script>
-        const API_URL = "http://localhost:8000/api/analyze";
+        const API_URL = "/analyze";
         let radarChartInstance = null;
         let doughnutChartInstance = null;
 
@@ -412,17 +419,22 @@
             const username = document.getElementById('github').value.trim();
             const extraUrlsStr = document.getElementById('extra_urls').value.trim();
             const videoUrl = document.getElementById('video_urls').value.trim();
+            const resumeInput = document.getElementById('resume');
             
-            // Prepare payload
-            const payload = {
-                github_username: username
-            };
+            // Prepare payload using FormData for file uploads
+            const formData = new FormData();
             
+            if (username) {
+                formData.append('github_username', username);
+            }
             if (extraUrlsStr) {
-                payload.extra_urls = extraUrlsStr.split(',').map(s => s.trim()).filter(s => s);
+                formData.append('extra_urls', extraUrlsStr);
             }
             if (videoUrl) {
-                payload.video_urls = [videoUrl];
+                formData.append('video_urls', videoUrl);
+            }
+            if (resumeInput.files.length > 0) {
+                formData.append('resume', resumeInput.files[0]);
             }
 
             // UI State updates
@@ -437,10 +449,11 @@
             errorBox.style.display = 'none';
 
             try {
+                // If API_URL is relative, it will use the domain where index.html is hosted
+                // In local dev, it assumes index.html is served from the same FastAPI backend
                 const response = await fetch(API_URL, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
+                    body: formData // No content-type header for FormData, browser sets it with boundaries
                 });
                 
                 const data = await response.json();

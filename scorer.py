@@ -21,43 +21,45 @@ class SkillScorer:
         
         # 1. Project Evidence Score (out of 30)
         # Based on number of repos, stars, and validated links
-        repos = github_data.get("repos", [])
-        public_repos_count = github_data.get("public_repos_count", 0)
+        repos = github_data.get("repos", []) if isinstance(github_data, dict) else []
+        public_repos_count = int(github_data.get("public_repos_count", 0)) if isinstance(github_data, dict) else 0
         
         # Count non-forked repos and total stars
         original_repos = 0
         total_stars = 0
         for repo in repos:
-            if not repo.get("is_fork", True):
-                original_repos += 1
-                total_stars += repo.get("stars", 0)
+            if isinstance(repo, dict) and not repo.get("is_fork", True):
+                original_repos += 1  # type: ignore
+                total_stars += int(str(repo.get("stars", 0)))  # type: ignore
         
         # Validated links bonus
-        active_links = sum(1 for link_data in link_validation.values() if link_data.get("status_code") == 200)
+        active_links = 0
+        if isinstance(link_validation, dict):
+            active_links = sum(1 for link_data in link_validation.values() if isinstance(link_data, dict) and link_data.get("status_code") == 200)
         
-        project_score = min(30, (original_repos * 2) + (total_stars * 1) + (active_links * 5))
+        project_score = min(30, (int(original_repos) * 2) + (int(total_stars) * 1) + (int(active_links) * 5))
         
         # 2. GitHub Activity Score (out of 30)
         # Based on followers and diverse languages
-        followers = github_data.get("followers", 0)
-        top_languages = github_data.get("top_languages", {})
-        unique_languages = len(top_languages)
+        followers = int(github_data.get("followers", 0)) if isinstance(github_data, dict) else 0
+        top_languages = github_data.get("top_languages", {}) if isinstance(github_data, dict) else {}
+        unique_languages = len(top_languages) if isinstance(top_languages, dict) else 0
         
-        activity_score = min(30, (followers * 1) + (unique_languages * 3) + (public_repos_count * 1))
+        activity_score = min(30, (int(followers) * 1) + (int(unique_languages) * 3) + (int(public_repos_count) * 1))
 
         # 3. Engineering Practice Score (out of 20)
         # Based on resume skills matching technical buzzwords and video transcripts
-        skills_found = resume_data.get("skills_found", [])
-        engineering_score = min(20, len(skills_found) * 2)
+        skills_found = resume_data.get("skills_found", []) if isinstance(resume_data, dict) else []
+        engineering_score = min(20, len(skills_found) * 2) if isinstance(skills_found, list) else 0
         
         # If they took the effort to submit a video, give them points
         video_transcripts = pipeline_data.get("video_transcripts", [])
-        if video_transcripts and len(video_transcripts) > 0:
+        if video_transcripts and isinstance(video_transcripts, list) and len(video_transcripts) > 0:
             engineering_score = min(20, engineering_score + 10)
             
         # 4. Collaboration Score (out of 20)
         # We roughly proxy this by the number of repos vs original repos (forks imply collaboration)
-        forked_repos = public_repos_count - original_repos
+        forked_repos = int(public_repos_count) - int(original_repos)
         collaboration_score = min(20, forked_repos * 2)
         
         # Overall Score
@@ -74,11 +76,11 @@ class SkillScorer:
             
         # Insights
         insights = []
-        if original_repos > 5:
+        if int(original_repos) > 5:
             insights.append("Shows strong initiative with multiple original projects.")
-        if unique_languages > 3:
+        if int(unique_languages) > 3:
             insights.append("Demonstrates versatility across multiple programming languages.")
-        if active_links > 0:
+        if int(active_links) > 0:
             insights.append("Has successfully deployed and hosted web applications.")
         if not insights:
             insights.append("Profile is still developing; recommend building and deploying more original projects.")
@@ -94,10 +96,10 @@ class SkillScorer:
             "persona": persona,
             "insights": insights,
             "metrics": {
-                "original_repos": original_repos,
-                "total_stars": total_stars,
-                "unique_languages": unique_languages,
-                "active_links": active_links,
+                "original_repos": int(original_repos),
+                "total_stars": int(total_stars),
+                "unique_languages": int(unique_languages),
+                "active_links": int(active_links),
                 "resume_skills": len(skills_found)
             }
         }

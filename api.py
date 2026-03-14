@@ -40,9 +40,11 @@ class AnalyzeRequest(BaseModel):
     video_urls: Optional[List[str]] = None
     extra_urls: Optional[List[str]] = None
 
+from fastapi.responses import FileResponse
+
 @app.get("/")
 def read_root():
-    return {"status": "Backend is running!"}
+    return FileResponse("index.html")
 
 @app.post("/api/analyze")
 async def analyze_profile(request: AnalyzeRequest):

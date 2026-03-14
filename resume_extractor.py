@@ -26,13 +26,13 @@ class ResumeExtractor:
 
     def extract_text_from_pdf(self, pdf_path: str) -> str:
         """Extract all text from a PDF file."""
-        text = ""
+        text = str("")
         try:
             with pdfplumber.open(pdf_path) as pdf:
                 for page in pdf.pages:
                     page_text = page.extract_text()
-                    if page_text:
-                        text += page_text + "\n"
+                    if page_text is not None:
+                        text = str(text) + str(page_text) + "\n"
             return text
         except Exception as e:
             logging.error(f"Failed to extract text from {pdf_path}: {e}")
